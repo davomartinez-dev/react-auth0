@@ -3,6 +3,7 @@ import auth0 from 'auth0-js';
 export default class Auth {
   constructor(history) {
     this.history = history;
+    this.userProfile = null;
     this.auth0 = new auth0.WebAuth({
       domain: process.env.REACT_APP_AUTH0_DOMAIN,
       clientID: process.env.REACT_APP_AUTH0_CLIENT_ID,
@@ -23,7 +24,7 @@ export default class Auth {
         this.history.push('/');
       } else if (err) {
         this.history.push('/');
-        alert(`Error: ${err.error}. Check the console for further details`);
+        alert(`Error: ${err.error}. Check the console for further details.`);
         console.log(err);
       }
     });
@@ -31,12 +32,12 @@ export default class Auth {
 
   setSession = authResult => {
     console.log(authResult);
-    // set the time that the access token will expire.
+    // set the time that the access token will expire
     const expiresAt = JSON.stringify(
       authResult.expiresIn * 1000 + new Date().getTime(),
     );
 
-    localStorage.setItem('acces_token', authResult.accessToken);
+    localStorage.setItem('access_token', authResult.accessToken);
     localStorage.setItem('id_token', authResult.idToken);
     localStorage.setItem('expires_at', expiresAt);
   };
@@ -47,12 +48,29 @@ export default class Auth {
   }
 
   logout = () => {
-    localStorage.removeItem('acces_token');
+    localStorage.removeItem('access_token');
     localStorage.removeItem('id_token');
     localStorage.removeItem('expires_at');
+    this.userProfile = null;
     this.auth0.logout({
       clientID: process.env.REACT_APP_AUTH0_CLIENT_ID,
       returnTo: 'http://localhost:3000',
+    });
+  };
+
+  getAccessToken = () => {
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) {
+      throw new Error('No access token found.');
+    }
+    return accessToken;
+  };
+
+  getProfile = cb => {
+    if (this.userProfile) return cb(this.userProfile);
+    this.auth0.client.userInfo(this.getAccessToken(), (err, profile) => {
+      if (profile) this.userProfile = profile;
+      cb(profile, err);
     });
   };
 }
